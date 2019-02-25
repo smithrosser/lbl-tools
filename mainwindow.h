@@ -13,6 +13,7 @@
 #include <QVector>
 #include <QSerialPort>
 #include <QSerialPortInfo>
+#include <QObject>
 
 namespace Ui {
 class MainWindow;
@@ -42,6 +43,7 @@ private slots:
     void listUpdate();
     void initEdit();
     void editPaneUpdate();
+    void updateSessionTime();
 
     void on_sessionList_itemClicked(QListWidgetItem *item);
     void on_sessionList_activated(const QModelIndex &index);
@@ -50,13 +52,22 @@ private slots:
     void on_comboPump_activated(int index);
     void on_editDur_textEdited(const QString &arg1);
 
+    void initDevice();
+    void deviceRead();
+
+    void on_buttonDetect_clicked();
+
 private:
     Ui::MainWindow *ui;
 
     bool isSelect = false;
     QString version = "0.1.1";
     QVector<Stage> session;
-    QSerialPort *arduino;
+
+    QSerialPort *device;
+    QByteArray serialBuffer = "";
+    QString devicePortName;
+    bool isDeviceAvailable = false, isHandshake = false, isDeviceReady = false;
 };
 
 #endif // MAINWINDOW_H

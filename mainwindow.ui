@@ -172,6 +172,9 @@
      <string/>
     </property>
     <widget class="QPushButton" name="buttonStart">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="geometry">
       <rect>
        <x>60</x>
@@ -230,12 +233,12 @@
       <rect>
        <x>150</x>
        <y>60</y>
-       <width>81</width>
+       <width>111</width>
        <height>21</height>
       </rect>
      </property>
      <property name="text">
-      <string>not connected</string>
+      <string>not ready</string>
      </property>
     </widget>
     <widget class="QLabel" name="labelSessionTime">
@@ -251,7 +254,7 @@
       <string>0 min 0 sec</string>
      </property>
     </widget>
-    <widget class="QLabel" name="labelDevice_2">
+    <widget class="QLabel" name="labelPort">
      <property name="geometry">
       <rect>
        <x>150</x>
@@ -281,6 +284,22 @@
      </property>
      <property name="text">
       <string>Device port:</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="buttonDetect">
+     <property name="geometry">
+      <rect>
+       <x>60</x>
+       <y>180</y>
+       <width>181</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="statusTip">
+      <string>Start deposition process</string>
+     </property>
+     <property name="text">
+      <string>Scan for devices</string>
      </property>
     </widget>
    </widget>

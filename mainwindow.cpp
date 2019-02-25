@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QDebug>
+#include <QTest>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -8,9 +10,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     setWindowTitle("LbL Tools " + version);
     initEdit();
+    device = new QSerialPort;
+    initDevice();
 }
 
 MainWindow::~MainWindow() {
+    if (device->isOpen())
+        device->close();
+    delete device;
     delete ui;
 }
 
@@ -234,7 +241,20 @@ void MainWindow::listUpdate() {
     ui->sessionList->clear();
     for(int i=0; i<session.size(); i++)
         listInsert(i, session[i]);
+
+    updateSessionTime();
 }
+
+void MainWindow::updateSessionTime() {
+    int sum = 0;
+
+    for(int i=0; i<session.size(); i++)
+        sum += session[i].getDur();
+
+    QString time = QString::number(sum/60) + " min " + QString::number(sum % 60) + " sec";
+    ui->labelSessionTime->setText(time);
+
+   }
 
 void MainWindow::initEdit() {
     ui->comboType->addItem("Fill");
@@ -250,4 +270,69 @@ void MainWindow::initEdit() {
 
 void MainWindow::on_sessionList_activated(const QModelIndex &index) {
     editPaneUpdate();
+}
+
+void MainWindow::initDevice() {
+    static const quint16 arduinoVendorId = 9025;
+    static const quint16 arduinoProductId = 67;
+
+    isDeviceAvailable = false;
+    foreach(const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts()) {
+        if(serialPortInfo.hasVendorIdentifier() && serialPortInfo.hasProductIdentifier()) {
+            if( serialPortInfo.vendorIdentifier() == arduinoVendorId ) {
+                if( serialPortInfo.productIdentifier() == arduinoProductId ) {
+                    devicePortName = serialPortInfo.portName();
+                    isDeviceAvailable = true;
+                    statusBar()->showMessage("Found a compatible device on " + devicePortName);
+                    ui->labelPort->setText(devicePortName);
+                }
+            }
+        }
+
+    }
+    if(isDeviceAvailable) {
+        device->setPortName(devicePortName);
+        device->setBaudRate(QSerialPort::Baud9600);
+        device->setDataBits(QSerialPort::Data8);
+        device->setParity(QSerialPort::NoParity);
+        device->setStopBits(QSerialPort::OneStop);
+        device->setFlowControl(QSerialPort::NoFlowControl);
+        QObject::connect(device, SIGNAL(readyRead()), this, SLOT(deviceRead()));
+
+        isHandshake = true;
+        ui->labelDevice->setText("waiting for response");
+        device->open(QSerialPort::ReadWrite);
+        QTest::qWait(500);
+        device->write("hnd");
+        QTest::qWait(500);
+        device->write("hnd");
+    } else {
+        statusBar()->showMessage("No compatible device found");
+        ui->labelPort->setText("unknown");
+        ui->labelDevice->setText("not ready");
+        ui->buttonStart->setEnabled(false);
+    }
+
+}
+
+void MainWindow::deviceRead() {
+    serialBuffer += device->readAll();
+    qDebug() << serialBuffer;
+    if( isHandshake && serialBuffer.size() > 2 ) {
+        if( serialBuffer.contains("shk") ) {
+            isDeviceReady = true;
+            ui->labelDevice->setText("ready");
+        } else {
+            ui->labelDevice->setText("handshake failed");
+        }
+        device->close();
+        serialBuffer = "";
+        isHandshake = false;
+        ui->buttonStart->setEnabled(true);
+    }
+}
+
+void MainWindow::on_buttonDetect_clicked()
+{
+   initDevice();
 }
