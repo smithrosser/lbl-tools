@@ -233,7 +233,7 @@
       <rect>
        <x>150</x>
        <y>60</y>
-       <width>111</width>
+       <width>131</width>
        <height>21</height>
       </rect>
      </property>
@@ -246,7 +246,7 @@
       <rect>
        <x>150</x>
        <y>80</y>
-       <width>81</width>
+       <width>121</width>
        <height>21</height>
       </rect>
      </property>
@@ -296,7 +296,7 @@
       </rect>
      </property>
      <property name="statusTip">
-      <string>Start deposition process</string>
+      <string>Scan for available deposition devices</string>
      </property>
      <property name="text">
       <string>Scan for devices</string>

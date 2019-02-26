@@ -52,10 +52,15 @@ private slots:
     void on_comboPump_activated(int index);
     void on_editDur_textEdited(const QString &arg1);
 
+    void setEnableUi(bool state);
+
     void initDevice();
     void deviceRead();
+    void sendSession();
 
     void on_buttonDetect_clicked();
+
+    void on_buttonStart_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -67,7 +72,7 @@ private:
     QSerialPort *device;
     QByteArray serialBuffer = "";
     QString devicePortName;
-    bool isDeviceAvailable = false, isHandshake = false, isDeviceReady = false;
+    bool isDeviceAvailable = false, isHandshake = false, isDeviceReady = false, isStart = false;
 };
 
 #endif // MAINWINDOW_H

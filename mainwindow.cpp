@@ -235,14 +235,13 @@ void MainWindow::listInsert(int index, Stage s) {
         default : break;
     }
     ui->sessionList->insertItem(index, item);
+    updateSessionTime();
 }
 
 void MainWindow::listUpdate() {
     ui->sessionList->clear();
     for(int i=0; i<session.size(); i++)
         listInsert(i, session[i]);
-
-    updateSessionTime();
 }
 
 void MainWindow::updateSessionTime() {
@@ -277,13 +276,14 @@ void MainWindow::initDevice() {
     static const quint16 arduinoProductId = 67;
 
     isDeviceAvailable = false;
+    isDeviceReady = false;
     foreach(const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts()) {
         if(serialPortInfo.hasVendorIdentifier() && serialPortInfo.hasProductIdentifier()) {
             if( serialPortInfo.vendorIdentifier() == arduinoVendorId ) {
                 if( serialPortInfo.productIdentifier() == arduinoProductId ) {
                     devicePortName = serialPortInfo.portName();
                     isDeviceAvailable = true;
-                    statusBar()->showMessage("Found a compatible device on " + devicePortName);
+                    statusBar()->showMessage("Found a compatible device on " + devicePortName + "...");
                     ui->labelPort->setText(devicePortName);
                 }
             }
@@ -300,7 +300,7 @@ void MainWindow::initDevice() {
         QObject::connect(device, SIGNAL(readyRead()), this, SLOT(deviceRead()));
 
         isHandshake = true;
-        ui->labelDevice->setText("waiting for response");
+        ui->labelDevice->setText("waiting for response...");
         device->open(QSerialPort::ReadWrite);
         QTest::qWait(500);
         device->write("hnd");
@@ -322,6 +322,7 @@ void MainWindow::deviceRead() {
         if( serialBuffer.contains("shk") ) {
             isDeviceReady = true;
             ui->labelDevice->setText("ready");
+            statusBar()->showMessage("Device on " + devicePortName + " ready");
         } else {
             ui->labelDevice->setText("handshake failed");
         }
@@ -330,9 +331,74 @@ void MainWindow::deviceRead() {
         isHandshake = false;
         ui->buttonStart->setEnabled(true);
     }
+    else if( isStart && serialBuffer.size() > 2 && serialBuffer.contains("rcv") ) {
+        serialBuffer = "";
+        sendSession();
+    }
+    else if( isStart && serialBuffer.size() > 2 && serialBuffer.contains("rdy") ) {
+        serialBuffer = "";
+        setEnableUi(true);
+        statusBar()->showMessage("Session transfer done");
+        ui->labelDevice->setText("ready");
+        isStart = false;
+    }
+    if( serialBuffer.size() > 2 && serialBuffer.contains("bsy") ) {
+        serialBuffer = "";
+        ui->labelDevice->setText("session running");
+        ui->buttonStart->setEnabled(false);
+        ui->buttonDetect->setEnabled(false);
+    }
+    if( serialBuffer.size() > 2 && serialBuffer.contains("dne")) {
+        serialBuffer = "";
+        ui->labelDevice->setText("ready");
+        ui->buttonStart->setEnabled(true);
+        ui->buttonDetect->setEnabled(true);
+        device->close();
+    }
 }
 
 void MainWindow::on_buttonDetect_clicked()
 {
    initDevice();
+}
+
+void MainWindow::on_buttonStart_clicked()
+{
+    if(session.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Session is empty");
+        return;
+    }
+    isStart = true;
+    setEnableUi(false);
+    statusBar()->showMessage("Waiting for device on " + devicePortName + "...");
+    device->open(QSerialPort::ReadWrite);
+    QTest::qWait(500);
+    device->write("snd");
+    QTest::qWait(500);
+    device->write("snd");
+}
+
+void MainWindow::sendSession() {
+    ui->labelDevice->setText("receiving data");
+    statusBar()->showMessage("Transferring session data...");
+
+    QString cmd;
+    for(int i=0; i<session.size(); i++) {
+        switch(session[i].getType()) {
+        case FILL : cmd = "f:" + QString::number(session[i].getPump()) + "," + QString::number(session[i].getDur()) + ";"; break;
+        case WASH : cmd = "w:" + QString::number(session[i].getDur()) + ";"; break;
+        case DRY :  cmd = "d:" + QString::number(session[i].getDur()) + ";"; break;
+        default : break;
+        }
+        qDebug() << "Output: " << cmd;
+        QTest::qWait(50);
+        device->write(cmd.toUtf8());
+    }
+    device->write("end;");
+}
+
+void MainWindow::setEnableUi(bool state) {
+    ui->verticalLayoutWidget->setEnabled(state);
+    ui->groupBox->setEnabled(state);
+    ui->groupBox_2->setEnabled(state);
 }
