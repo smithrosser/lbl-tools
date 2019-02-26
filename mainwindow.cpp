@@ -11,7 +11,10 @@ MainWindow::MainWindow(QWidget *parent) :
     setWindowTitle("LbL Tools " + version);
     initEdit();
     device = new QSerialPort;
-    initDevice();
+
+    loadSettings();
+    if(settingAutoScan)
+        initDevice();
 }
 
 MainWindow::~MainWindow() {
@@ -19,6 +22,22 @@ MainWindow::~MainWindow() {
         device->close();
     delete device;
     delete ui;
+}
+
+void MainWindow::loadSettings() {
+    QSettings setting("UoN","lbl-tools");
+    setting.beginGroup("MainWindow");
+    settingAutoScan = setting.value("AutoScan", true).toBool();
+    setting.endGroup();
+    qDebug() << "Loaded";
+}
+
+void MainWindow::saveSettings() {
+    QSettings setting("UoN","lbl-tools");
+    setting.beginGroup("MainWindow");
+    setting.setValue("AutoScan", settingAutoScan);
+    setting.endGroup();
+    qDebug() << "Saved";
 }
 
 // MENU BAR METHODS
@@ -107,6 +126,8 @@ void MainWindow::on_actionSave_As_triggered() {
     }
     file.close();
 }
+
+
 
 void MainWindow::on_actionExit_triggered() {
     QApplication::quit();
@@ -402,4 +423,14 @@ void MainWindow::setEnableUi(bool state) {
     ui->verticalLayoutWidget->setEnabled(state);
     ui->groupBox->setEnabled(state);
     ui->groupBox_2->setEnabled(state);
+}
+
+void MainWindow::on_action_Settings_triggered() {
+    dialogSettings sDialog;
+    sDialog.setModal(true);
+    sDialog.setAutoScan(settingAutoScan);
+    if( sDialog.exec() == QDialog::Accepted ) {
+        settingAutoScan = sDialog.getAutoScan();
+        saveSettings();
+    }
 }

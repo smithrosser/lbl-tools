@@ -3,6 +3,7 @@
 
 #include "lbl.h"
 #include "dialogadd.h"
+#include "dialogsettings.h"
 
 #include <QMainWindow>
 #include <QFileDialog>
@@ -13,7 +14,7 @@
 #include <QVector>
 #include <QSerialPort>
 #include <QSerialPortInfo>
-#include <QObject>
+#include <QSettings>
 
 namespace Ui {
 class MainWindow;
@@ -28,6 +29,9 @@ public:
     ~MainWindow();
 
 private slots:
+    void loadSettings();
+    void saveSettings();
+
     void on_action_New_triggered();
     void on_action_Open_triggered();
     void on_actionSave_As_triggered();
@@ -62,6 +66,8 @@ private slots:
 
     void on_buttonStart_clicked();
 
+    void on_action_Settings_triggered();
+
 private:
     Ui::MainWindow *ui;
 
@@ -73,6 +79,7 @@ private:
     QByteArray serialBuffer = "";
     QString devicePortName;
     bool isDeviceAvailable = false, isHandshake = false, isDeviceReady = false, isStart = false;
+    bool settingAutoScan;
 };
 
 #endif // MAINWINDOW_H
