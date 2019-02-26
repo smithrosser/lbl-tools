@@ -45,8 +45,8 @@ private slots:
     void editPaneUpdate();
     void updateSessionTime();
 
-    void on_sessionList_itemClicked(QListWidgetItem *item);
-    void on_sessionList_activated(const QModelIndex &index);
+    void on_sessionList_itemClicked();
+    void on_sessionList_activated();
 
     void on_comboType_activated(int index);
     void on_comboPump_activated(int index);

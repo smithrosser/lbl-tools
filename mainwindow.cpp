@@ -177,7 +177,7 @@ void MainWindow::on_buttonCopy_clicked() {
     }
 }
 
-void MainWindow::on_sessionList_itemClicked(QListWidgetItem *item) {
+void MainWindow::on_sessionList_itemClicked() {
     editPaneUpdate();
 }
 
@@ -187,10 +187,11 @@ void MainWindow::editPaneUpdate() {
     if(session[pos].getType() == FILL) {
         ui->comboPump->setCurrentIndex(session[pos].getPump());
         ui->comboPump->setEnabled(true);
-    } else
+    } else {
         ui->comboPump->setEnabled(false);
         ui->comboType->setCurrentIndex(session[pos].getType()-1);
         ui->editDur->setText(QString::number(session[pos].getDur()));
+    }
 }
 
 void MainWindow::on_comboType_activated(int index) {
@@ -267,7 +268,7 @@ void MainWindow::initEdit() {
     ui->editDur->setValidator( new QIntValidator(1, 1000, this) );
 }
 
-void MainWindow::on_sessionList_activated(const QModelIndex &index) {
+void MainWindow::on_sessionList_activated() {
     editPaneUpdate();
 }
 
