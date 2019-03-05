@@ -15,6 +15,8 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QSettings>
+#include <QDebug>
+#include <QTest>
 
 namespace Ui {
 class MainWindow;
@@ -35,6 +37,8 @@ private slots:
     void on_action_New_triggered();
     void on_action_Open_triggered();
     void on_actionSave_As_triggered();
+    void saveSession(QString fileName);
+    void updateSave();
     void on_actionExit_triggered();
 
     void on_buttonUp_clicked();
@@ -68,11 +72,14 @@ private slots:
 
     void on_action_Settings_triggered();
 
+    void on_action_Save_triggered();
+
 private:
     Ui::MainWindow *ui;
 
     bool isSelect = false;
     QString version = "0.1.1";
+    QString currentFile;
     QVector<Stage> session;
 
     QSerialPort *device;

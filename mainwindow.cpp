@@ -1,7 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <QDebug>
-#include <QTest>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -15,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     loadSettings();
     if(settingAutoScan)
         initDevice();
+    updateSave();
 }
 
 MainWindow::~MainWindow() {
@@ -24,12 +23,12 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
+// SETTINGS METHODS
 void MainWindow::loadSettings() {
     QSettings setting("UoN","lbl-tools");
     setting.beginGroup("MainWindow");
     settingAutoScan = setting.value("AutoScan", true).toBool();
     setting.endGroup();
-    qDebug() << "Loaded";
 }
 
 void MainWindow::saveSettings() {
@@ -37,13 +36,14 @@ void MainWindow::saveSettings() {
     setting.beginGroup("MainWindow");
     setting.setValue("AutoScan", settingAutoScan);
     setting.endGroup();
-    qDebug() << "Saved";
 }
 
 // MENU BAR METHODS
 void MainWindow::on_action_New_triggered() {
     session.clear();
     ui->sessionList->clear();
+    currentFile.clear();
+    updateSave();
 }
 
 void MainWindow::on_action_Open_triggered() {
@@ -59,6 +59,7 @@ void MainWindow::on_action_Open_triggered() {
     {
         ui->sessionList->clear();
         session.clear();
+        currentFile = fileName;
         QTextStream in(&inputFile);
         while (!in.atEnd())
         {
@@ -99,13 +100,24 @@ void MainWindow::on_action_Open_triggered() {
        inputFile.close();
        listUpdate();
        ui->sessionList->setCurrentRow(0);
+       statusBar()->showMessage("Opened: " + fileName);
        editPaneUpdate();
+       updateSave();
     }
 }
 
 void MainWindow::on_actionSave_As_triggered() {
-    QString line;
     QString fileName = QFileDialog::getSaveFileName(this, "Save session as...", ".lbl", "LbL session (*.lbl);; All files (*.*)");
+    saveSession(fileName);
+}
+
+void MainWindow::on_action_Save_triggered() {
+    if(!currentFile.isEmpty())
+        saveSession(currentFile);
+}
+
+void MainWindow::saveSession(QString fileName) {
+    QString line;
     QFile file(fileName);
     if(fileName.isEmpty() && fileName.isNull())
          return;
@@ -125,9 +137,35 @@ void MainWindow::on_actionSave_As_triggered() {
         out << line << endl;
     }
     file.close();
+    currentFile = fileName;
+    statusBar()->showMessage("Saved: " + fileName);
+    updateSave();
+}
+
+void MainWindow::updateSave() {
+    ui->action_Save->setEnabled(false);
+    if(!currentFile.isEmpty())
+        ui->action_Save->setEnabled(true);
+
+    QString cFName;
+    QFileInfo cF(QFile(currentFile).fileName());
+    if(cF.fileName().isEmpty())
+        cFName = "new file";
+    else
+        cFName = cF.fileName();
+    MainWindow::setWindowTitle(cFName + " - LbL Tools " + version);
 }
 
 
+void MainWindow::on_action_Settings_triggered() {
+    dialogSettings sDialog;
+    sDialog.setModal(true);
+    sDialog.setAutoScan(settingAutoScan);
+    if( sDialog.exec() == QDialog::Accepted ) {
+        settingAutoScan = sDialog.getAutoScan();
+        saveSettings();
+    }
+}
 
 void MainWindow::on_actionExit_triggered() {
     QApplication::quit();
@@ -203,6 +241,12 @@ void MainWindow::on_sessionList_itemClicked() {
 }
 
 // EDIT PANE METHODS
+void MainWindow::setEnableUi(bool state) {
+    ui->verticalLayoutWidget->setEnabled(state);
+    ui->groupBox->setEnabled(state);
+    ui->groupBox_2->setEnabled(state);
+}
+
 void MainWindow::editPaneUpdate() {
     int pos = ui->sessionList->currentRow();
     if(session[pos].getType() == FILL) {
@@ -247,7 +291,19 @@ void MainWindow::on_editDur_textEdited(const QString &arg1) {
 
 }
 
-// OTHER METHODS
+void MainWindow::initEdit() {
+    ui->comboType->addItem("Fill");
+    ui->comboType->addItem("Wash");
+    ui->comboType->addItem("Dry");
+
+    ui->comboPump->addItem("Pump 0");
+    ui->comboPump->addItem("Pump 1");
+    ui->comboPump->addItem("Pump 2");
+
+    ui->editDur->setValidator( new QIntValidator(1, 1000, this) );
+}
+
+// LIST WIDGET METHODS
 void MainWindow::listInsert(int index, Stage s) {
     QString item;
     switch(s.getType()) {
@@ -277,22 +333,11 @@ void MainWindow::updateSessionTime() {
 
    }
 
-void MainWindow::initEdit() {
-    ui->comboType->addItem("Fill");
-    ui->comboType->addItem("Wash");
-    ui->comboType->addItem("Dry");
-
-    ui->comboPump->addItem("Pump 0");
-    ui->comboPump->addItem("Pump 1");
-    ui->comboPump->addItem("Pump 2");
-
-    ui->editDur->setValidator( new QIntValidator(1, 1000, this) );
-}
-
 void MainWindow::on_sessionList_activated() {
     editPaneUpdate();
 }
 
+// DEVICE METHODS
 void MainWindow::initDevice() {
     static const quint16 arduinoVendorId = 9025;
     static const quint16 arduinoProductId = 67;
@@ -339,7 +384,6 @@ void MainWindow::initDevice() {
 
 void MainWindow::deviceRead() {
     serialBuffer += device->readAll();
-    qDebug() << serialBuffer;
     if( isHandshake && serialBuffer.size() > 2 ) {
         if( serialBuffer.contains("shk") ) {
             isDeviceReady = true;
@@ -379,13 +423,11 @@ void MainWindow::deviceRead() {
     }
 }
 
-void MainWindow::on_buttonDetect_clicked()
-{
+void MainWindow::on_buttonDetect_clicked() {
    initDevice();
 }
 
-void MainWindow::on_buttonStart_clicked()
-{
+void MainWindow::on_buttonStart_clicked() {
     if(session.isEmpty()) {
         QMessageBox::warning(this, "Error", "Session is empty");
         return;
@@ -412,25 +454,9 @@ void MainWindow::sendSession() {
         case DRY :  cmd = "d:" + QString::number(session[i].getDur()) + ";"; break;
         default : break;
         }
-        qDebug() << "Output: " << cmd;
         QTest::qWait(50);
         device->write(cmd.toUtf8());
     }
     device->write("end;");
 }
 
-void MainWindow::setEnableUi(bool state) {
-    ui->verticalLayoutWidget->setEnabled(state);
-    ui->groupBox->setEnabled(state);
-    ui->groupBox_2->setEnabled(state);
-}
-
-void MainWindow::on_action_Settings_triggered() {
-    dialogSettings sDialog;
-    sDialog.setModal(true);
-    sDialog.setAutoScan(settingAutoScan);
-    if( sDialog.exec() == QDialog::Accepted ) {
-        settingAutoScan = sDialog.getAutoScan();
-        saveSettings();
-    }
-}

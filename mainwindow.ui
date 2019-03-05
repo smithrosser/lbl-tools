@@ -489,7 +489,11 @@
    <addaction name="menu_Edit"/>
    <addaction name="menu_Help"/>
   </widget>
-  <widget class="QStatusBar" name="statusBar"/>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="sizeGripEnabled">
+    <bool>false</bool>
+   </property>
+  </widget>
   <action name="action_New">
    <property name="text">
     <string>&amp;New</string>
