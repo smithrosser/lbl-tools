@@ -36,10 +36,13 @@ private slots:
 
     void on_action_New_triggered();
     void on_action_Open_triggered();
+    void on_action_Save_triggered();
     void on_actionSave_As_triggered();
+    void on_action_Settings_triggered();
+    void on_actionExit_triggered();
+
     void saveSession(QString fileName);
     void updateSave();
-    void on_actionExit_triggered();
 
     void on_buttonUp_clicked();
     void on_buttonDown_clicked();
@@ -51,7 +54,7 @@ private slots:
     void listUpdate();
     void initEdit();
     void editPaneUpdate();
-    void updateSessionTime();
+    void updateSessionInfo();
 
     void on_sessionList_itemClicked();
     void on_sessionList_activated();
@@ -67,18 +70,15 @@ private slots:
     void sendSession();
 
     void on_buttonDetect_clicked();
-
     void on_buttonStart_clicked();
 
-    void on_action_Settings_triggered();
-
-    void on_action_Save_triggered();
 
 private:
     Ui::MainWindow *ui;
 
     bool isSelect = false;
-    QString version = "0.1.1";
+    bool isRunning = false;
+    QString version = "0.1.3";
     QString currentFile;
     QVector<Stage> session;
 

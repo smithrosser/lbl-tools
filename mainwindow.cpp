@@ -6,7 +6,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    setWindowTitle("LbL Tools " + version);
+    setWindowTitle("LbL Tools beta" + version);
     initEdit();
     device = new QSerialPort;
 
@@ -153,7 +153,7 @@ void MainWindow::updateSave() {
         cFName = "new file";
     else
         cFName = cF.fileName();
-    MainWindow::setWindowTitle(cFName + " - LbL Tools " + version);
+    MainWindow::setWindowTitle(cFName + " - LbL Tools beta " + version);
 }
 
 
@@ -313,7 +313,7 @@ void MainWindow::listInsert(int index, Stage s) {
         default : break;
     }
     ui->sessionList->insertItem(index, item);
-    updateSessionTime();
+    updateSessionInfo();
 }
 
 void MainWindow::listUpdate() {
@@ -322,14 +322,26 @@ void MainWindow::listUpdate() {
         listInsert(i, session[i]);
 }
 
-void MainWindow::updateSessionTime() {
+void MainWindow::updateSessionInfo() {
     int sum = 0;
+    int count = 0;
+    int volume[3];
+    volume[0] = volume[1] = volume[2] = 0;
 
-    for(int i=0; i<session.size(); i++)
+    for(int i=0; i<session.size(); i++) {
         sum += session[i].getDur();
+        count++;
+
+        if(session[i].getType() == FILL)
+            volume[session[i].getPump()]++;
+    }
 
     QString time = QString::number(sum/60) + " min " + QString::number(sum % 60) + " sec";
     ui->labelSessionTime->setText(time);
+    ui->labelSessionCount->setText(QString::number(count));
+    ui->labelUsage0->setText(QString::number(volume[0])+" ml");
+    ui->labelUsage1->setText(QString::number(volume[1])+" ml");
+    ui->labelUsage2->setText(QString::number(volume[2])+" ml");
 
    }
 
@@ -413,6 +425,7 @@ void MainWindow::deviceRead() {
         ui->labelDevice->setText("session running");
         ui->buttonStart->setEnabled(false);
         ui->buttonDetect->setEnabled(false);
+        isRunning = true;
     }
     if( serialBuffer.size() > 2 && serialBuffer.contains("dne")) {
         serialBuffer = "";
@@ -420,6 +433,7 @@ void MainWindow::deviceRead() {
         ui->buttonStart->setEnabled(true);
         ui->buttonDetect->setEnabled(true);
         device->close();
+        isRunning = false;
     }
 }
 
