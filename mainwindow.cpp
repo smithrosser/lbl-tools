@@ -379,7 +379,7 @@ void MainWindow::initDevice() {
         QObject::connect(device, SIGNAL(readyRead()), this, SLOT(deviceRead()));
 
         isHandshake = true;
-        ui->labelDevice->setText("waiting for response...");
+        ui->labelDevice->setText("awaiting response");
         device->open(QSerialPort::ReadWrite);
         QTest::qWait(500);
         device->write("hnd");
