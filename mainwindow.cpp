@@ -238,13 +238,14 @@ void MainWindow::setEnableUi(bool state) {
 void MainWindow::editPaneUpdate() {
     int pos = ui->sessionList->currentRow();
     ui->comboType->setCurrentIndex(session[pos].getType());
+    ui->editDur->setText(QString::number(session[pos].getDur()));
+
     if(session[pos].getType() == STAGE_FILL) {
         ui->comboPump->setCurrentIndex(session[pos].getPump());
         ui->comboPump->setEnabled(true);
     } else {
         ui->comboPump->setEnabled(false);
-        ui->editDur->setText(QString::number(session[pos].getDur()));
-    }
+           }
 }
 
 void MainWindow::on_comboType_activated(int index) {
