@@ -2,9 +2,7 @@
 
 int parseStageFromFile( QString str, Stage& s ) {
 
-    QRegExp rxSpace("(\\ )");
-    QStringList tokens = str.split(rxSpace);
-    qDebug() << tokens;
+    QStringList tokens = tokenizeByChar(str, QString(" "));
 
     if( tokens.size() > 3 )		// catches commands that are too long
         return PARSE_ERROR;
@@ -29,8 +27,8 @@ int parseType( QString typeStr, Stage& s ) {
 
 int parseParam( QString paramStr, Stage& s ) {
 
-    QRegExp rxColon("(\\:)"), rxNumeric("\\d*");
-    QStringList paramTokens = paramStr.split(rxColon);
+    QRegExp rxNumeric("\\d*");
+    QStringList paramTokens = tokenizeByChar(paramStr, QString(":"));
 
     if( paramTokens.size() > 2 )		// no more than 2 key:value pairs
         return PARSE_ERROR;
@@ -45,4 +43,17 @@ int parseParam( QString paramStr, Stage& s ) {
         return PARSE_ERROR;
 
     return PARSE_SUCCESS;
+}
+
+QStringList tokenizeByChar( QString str, QString delimiter) {
+    QRegExp rx("(\\" + delimiter + ")");
+    QStringList tokens = str.split(rx);
+
+    for(int i=0; i<tokens.size(); i++) {
+        if( tokens.at(i).isEmpty() ) {
+        tokens.removeAt(i);
+        }
+    }
+
+    return tokens;
 }

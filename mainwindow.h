@@ -3,6 +3,7 @@
 
 #include "lbl.h"
 #include "parser.h"
+
 #include "dialogadd.h"
 #include "dialogsettings.h"
 
@@ -13,6 +14,7 @@
 #include <QListWidgetItem>
 #include <QTextStream>
 #include <QTextCursor>
+#include <QTimer>
 #include <QVector>
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -95,6 +97,8 @@ private:
     bool isRunning = false;
 
     bool settingAutoScan;
+
+    int stageCount = 0;
 };
 
 #endif // MAINWINDOW_H

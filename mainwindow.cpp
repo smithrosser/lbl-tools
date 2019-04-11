@@ -52,7 +52,6 @@ void MainWindow::on_action_Open_triggered() {
 
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open existing session..."), "",
                                                      "LbL session (*.lbl);;All files (*.*)");	// open file dialog
-    QFile inputFile(fileName);
     if(fileName.isEmpty() && fileName.isNull())
          return;
 
@@ -391,7 +390,8 @@ void MainWindow::deviceRead() {
             isDeviceReady = true;
             ui->labelDevice->setText("ready");
             updateConsole("Device on " + devicePortName + " ready");
-        } else {
+        }
+        else {
             ui->labelDevice->setText("handshake failed");
             updateConsole("Device handshake failed");
         }

@@ -13,6 +13,7 @@
 int parseStageFromFile ( QString str, Stage& s );
 int parseType( QString str, Stage& s );
 int parseParam( QString paramStr, Stage& s );
+QStringList tokenizeByChar( QString str, QString delimiter );
 
 bool isInteger( QString str );
 
