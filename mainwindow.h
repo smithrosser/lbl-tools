@@ -72,20 +72,24 @@ private slots:
     void on_buttonDetect_clicked();
     void on_buttonStart_clicked();
 
+    void updateConsole( QString str );
+
 
 private:
     Ui::MainWindow *ui;
 
-    bool isSelect = false;
-    bool isRunning = false;
-    QString version = "0.1.3";
+    QString version = "0.1.4";
     QString currentFile;
     QVector<Stage> session;
 
     QSerialPort *device;
     QByteArray serialBuffer = "";
     QString devicePortName;
+
     bool isDeviceAvailable = false, isHandshake = false, isDeviceReady = false, isStart = false;
+    bool isSelect = false;
+    bool isRunning = false;
+
     bool settingAutoScan;
 };
 

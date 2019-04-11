@@ -1,150 +1,103 @@
-#define MAX_STAGES 32
-#define END 0
-#define FILL 1
-#define WASH 2
-#define DRY 3
+#include "deposition.hpp"
+#include <cstring>
 
-#define PUMP_1 4
-#define PUMP_2 5
-#define PUMP_3 6
-#define PUMP_W 7
-#define PUMP_D 8
-#define VALVE_D 9
-
-int count;
-int sType[MAX_STAGES], sPump[MAX_STAGES], sDur[MAX_STAGES];
-String inputString = "";
-bool cmdLoop;
+Stage session[MAX_STAGES];
+State currentState;
+int sessionCount = 0;
 
 void setup() {
-  Serial.begin(9600);
-  
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(PUMP_1, OUTPUT);
-  pinMode(PUMP_2, OUTPUT);
-  pinMode(PUMP_3, OUTPUT);
-  pinMode(PUMP_W, OUTPUT);
+    pinMode(PUMP_1, OUTPUT);
+    pinMode(PUMP_2, OUTPUT);
+    pinMode(PUMP_3, OUTPUT);
+    pinMode(PUMP_W, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
 
-  digitalWrite(PUMP_1, HIGH);
-  digitalWrite(PUMP_2, HIGH);
-  digitalWrite(PUMP_3, HIGH);
-  digitalWrite(PUMP_W, HIGH);
+    resetSession();
+    resetDevice();
+    Serial.begin(9600);
 }
 
-// Initial state (waits for specific three-letter commands).
-void loop() {    
-    while( Serial.available() ) {
-      delay(3);   // allow buffer to fill
-      if( Serial.available() > 0 ) {
-        char inputChar = Serial.read();    // read serial char
-        inputString += inputChar;             // and add it to string
-      }
-      if( inputString.length() > 2 && inputString.indexOf("hnd") >= 0 ) {       // LbL Tools sends the command "hnd" to the device, and waits for the word "shk" (handshake)
+void loop() {
+    delay(1000);
+    switch(currentState) {
+        case IDLE :
+            Serial.print("IDLE state\n");
+            currentState = ( waitForCommand() == SESSION_RECVD ) ? READ : IDLE;
+            break;
+        case READ :
+            Serial.print("READ state\n");
+            if( retrieveSessionStage() == PARSE_ERROR ) {
+                Serial.print("Parsing error!");
+            }
+            break;
+        case EXEC :
+            Serial.print("EXEC state\n");
+            break;
+    }
+}
+
+// STATE OPERATIONS
+
+int waitForCommand() {
+    String input = readSerial();
+    
+    if( input.indexOf("hnd") != -1 ) {
         Serial.print("shk");
-        inputString = "";  
-      }
-      else if( inputString.length() > 2 && inputString.indexOf("snd") >= 0 ) {  // LbL Tools sends the command "snd" ('send') when it wants to send the session
-        inputString = "";
-        retrieveCommands();
-        beginLbL();
-      }
+        return HANDSHAKE_RECVD;
     }
+    else if( input.indexOf("snd") != -1 )
+        return SESSION_RECVD;
+    else
+        return NOTHING_RECVD;
 }
 
-// Parses input serial stream into commands
-void retrieveCommands() {
-  Serial.print("rcv");      // once LbL Tools receives the signal "rcv" ('receiving'), the session stream begins
-  String cmd = "";
-  int type, dur, pump;
-  resetSession(); count = 0; cmdLoop = true;
-  while(cmdLoop) {
-    while( Serial.available() ) {
-      delay(3);
-      if( Serial.available() > 0 ) {
-        char inputChar = Serial.read();
-        inputString += inputChar;
-        if( inputString.endsWith(";") ) {   // build up input string until ';'
-          for (int i=0; i<inputString.length(); i++) {
-             if(inputString.substring(i, i+1).equals(":")) {
-              if( cmd.equals("f") )
-                type = FILL;
-              else if( cmd.equals("w") )
-                type = WASH;
-              else if( cmd.equals("d") )
-                type = DRY;
-              cmd = "";
-             }
-             else if(inputString.substring(i, i+1).equals(",")) {
-              pump = cmd.toInt();
-              cmd = "";
-             }
-             else if(inputString.substring(i, i+1).equals(";")) {
-              if( cmd.equals("end") ) {
-                type = END;
-                cmdLoop = false;
-              }
-              else
-                dur = cmd.toInt();
-              sType[count] = -1; sDur[count] = -1; sPump[count] = -1;
-              switch(type) {
-                case FILL : sType[count] = FILL; sDur[count] = dur; sPump[count] = pump; break;
-                case WASH : sType[count] = WASH; sDur[count] = dur; break;
-                case DRY  : sType[count] = DRY; sDur[count] = dur; break;
-                case END  : sType[count] = END; break;
-                default   : break;
-              }
-              cmd = "";
-              count++;
-             }
-             else {
-                cmd.concat(inputString.substring(i, i+1));
-             }
-          }
-          inputString = "";
-        }
-      }
+// SERIAL OPERATIONS
+
+String readSerial() {
+    char inputChar;
+    String inputString = "";
+
+    while( Serial.available() && inputString.length() <= MAX_CMD_LENGTH ) {
+        delay(5);
+            if( Serial.available() > 0) {
+                inputChar = Serial.read();
+                inputString += inputChar;
+            }
+            if( inputString.endsWith(";") ) // catcher for command strings
+                return inputString;
     }
+    return inputString;
+}
+
+int parseSessionString(String s) {
+    char* point;
+    point = strtok(str, ".");
+
+    while(point != NULL)
+      Serial.println("Parsed: " + point);
+      point = strtok(NULL, ".");
+}
+
+bool isInteger(String s) {
+  for(int i=0; i<s.length(); i++) {
+      if( !isDigit(s.charAt(i)) )
+          return false;
   }
-  Serial.print("rdy");
+  return true;  
 }
 
-void beginLbL() {
-  delay(50);
-  Serial.print("bsy");
-  for( int i=0; i<count; i++ ) {  
-    switch(sType[i]) {
-      case FILL : immerse(sPump[i], sDur[i]); break;
-      case WASH : wash(sDur[i]); break;
-      case DRY : dry(sDur[i]); break;
-      case END : break;
-      default : break;
-    }
-  }
-  Serial.print("dne");
-}
-
-void immerse(int pump, int dur) {
-  digitalWrite(pump+4, LOW);
-  delay(dur*1000);
-  digitalWrite(pump+4, HIGH); 
-}
-
-void wash(int dur) {
-  digitalWrite(PUMP_W, LOW);
-  delay(dur*1000);
-  digitalWrite(PUMP_W, HIGH);
-}
-
-void dry(int dur) {
-  digitalWrite(LED_BUILTIN, HIGH); 
-  delay(dur*1000); 
-  digitalWrite(LED_BUILTIN, LOW);
-}
+//  RESETS
 
 void resetSession() {
-  for(int i=0; i<count; i++) {
-    sType[i] = -1;
-    sPump[i] = -1;
-    sDur[i] = -1;
-  }
+    for(int i=0; i<MAX_STAGES; i++)
+        session[i].type = session[i].pump = session[i].dur = -1;
+}
+
+void resetDevice() {
+    digitalWrite(PUMP_1, HIGH);
+    digitalWrite(PUMP_2, HIGH);
+    digitalWrite(PUMP_3, HIGH);
+    digitalWrite(PUMP_W, HIGH);
+
+    currentState = IDLE;
 }

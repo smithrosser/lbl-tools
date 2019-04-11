@@ -100,7 +100,7 @@ void MainWindow::on_action_Open_triggered() {
        inputFile.close();
        listUpdate();
        ui->sessionList->setCurrentRow(0);
-       statusBar()->showMessage("Opened: " + fileName);
+       updateConsole("Opened: " + fileName);
        editPaneUpdate();
        updateSave();
     }
@@ -138,7 +138,7 @@ void MainWindow::saveSession(QString fileName) {
     }
     file.close();
     currentFile = fileName;
-    statusBar()->showMessage("Saved: " + fileName);
+    updateConsole("Saved: " + fileName);
     updateSave();
 }
 
@@ -155,7 +155,6 @@ void MainWindow::updateSave() {
         cFName = cF.fileName();
     MainWindow::setWindowTitle(cFName + " - LbL Tools beta " + version);
 }
-
 
 void MainWindow::on_action_Settings_triggered() {
     dialogSettings sDialog;
@@ -362,7 +361,7 @@ void MainWindow::initDevice() {
                 if( serialPortInfo.productIdentifier() == arduinoProductId ) {
                     devicePortName = serialPortInfo.portName();
                     isDeviceAvailable = true;
-                    statusBar()->showMessage("Found a compatible device on " + devicePortName + "...");
+                    updateConsole("Found a compatible device on " + devicePortName + "...");
                     ui->labelPort->setText(devicePortName);
                 }
             }
@@ -386,7 +385,7 @@ void MainWindow::initDevice() {
         QTest::qWait(500);
         device->write("hnd");
     } else {
-        statusBar()->showMessage("No compatible device found");
+        updateConsole("No compatible device found");
         ui->labelPort->setText("unknown");
         ui->labelDevice->setText("not ready");
         ui->buttonStart->setEnabled(false);
@@ -400,9 +399,10 @@ void MainWindow::deviceRead() {
         if( serialBuffer.contains("shk") ) {
             isDeviceReady = true;
             ui->labelDevice->setText("ready");
-            statusBar()->showMessage("Device on " + devicePortName + " ready");
+            updateConsole("Device on " + devicePortName + " ready");
         } else {
             ui->labelDevice->setText("handshake failed");
+            updateConsole("Device handshake failed");
         }
         device->close();
         serialBuffer = "";
@@ -416,13 +416,13 @@ void MainWindow::deviceRead() {
     else if( isStart && serialBuffer.size() > 2 && serialBuffer.contains("rdy") ) {
         serialBuffer = "";
         setEnableUi(true);
-        statusBar()->showMessage("Session transfer done");
-        ui->labelDevice->setText("ready");
+        updateConsole("Session transfer done");
         isStart = false;
     }
     if( serialBuffer.size() > 2 && serialBuffer.contains("bsy") ) {
         serialBuffer = "";
         ui->labelDevice->setText("session running");
+        updateConsole("Session running...");
         ui->buttonStart->setEnabled(false);
         ui->buttonDetect->setEnabled(false);
         isRunning = true;
@@ -448,7 +448,7 @@ void MainWindow::on_buttonStart_clicked() {
     }
     isStart = true;
     setEnableUi(false);
-    statusBar()->showMessage("Waiting for device on " + devicePortName + "...");
+    updateConsole("Waiting for device on " + devicePortName + "...");
     device->open(QSerialPort::ReadWrite);
     QTest::qWait(500);
     device->write("snd");
@@ -458,7 +458,7 @@ void MainWindow::on_buttonStart_clicked() {
 
 void MainWindow::sendSession() {
     ui->labelDevice->setText("receiving data");
-    statusBar()->showMessage("Transferring session data...");
+    updateConsole("Transferring session data...");
 
     QString cmd;
     for(int i=0; i<session.size(); i++) {
@@ -474,3 +474,8 @@ void MainWindow::sendSession() {
     device->write("end;");
 }
 
+// CONSOLE METHODS
+
+void MainWindow::updateConsole( QString str ) {
+    ui->console->appendPlainText(str);
+}
