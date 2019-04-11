@@ -29,13 +29,16 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     dialogadd.cpp \
-    dialogsettings.cpp
+    dialogsettings.cpp \
+    lbl.cpp \
+    parser.cpp
 
 HEADERS += \
         mainwindow.h \
     lbl.h \
     dialogadd.h \
-    dialogsettings.h
+    dialogsettings.h \
+    parser.h
 
 FORMS += \
         mainwindow.ui \

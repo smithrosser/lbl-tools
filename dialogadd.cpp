@@ -16,7 +16,7 @@ dialogAdd::dialogAdd(QWidget *parent) :
     ui->comboPump->addItem("Pump 1");
     ui->comboPump->addItem("Pump 2");
 
-    ui->editDur->setValidator( new QIntValidator(1, 1000, this) );
+    ui->editDur->setValidator( new QIntValidator(1, 2000, this) );
 }
 
 dialogAdd::~dialogAdd() {
@@ -24,7 +24,7 @@ dialogAdd::~dialogAdd() {
 }
 
 void dialogAdd::on_comboType_currentIndexChanged(int index) {
-    type = index + 1;
+    type = index;
     if( index > 0)
         ui->comboPump->setEnabled(false);
     else

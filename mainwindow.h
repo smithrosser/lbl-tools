@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "lbl.h"
+#include "parser.h"
 #include "dialogadd.h"
 #include "dialogsettings.h"
 
@@ -11,6 +12,7 @@
 #include <QMessageBox>
 #include <QListWidgetItem>
 #include <QTextStream>
+#include <QTextCursor>
 #include <QVector>
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -41,7 +43,9 @@ private slots:
     void on_action_Settings_triggered();
     void on_actionExit_triggered();
 
+    void openSession(QString fileName);
     void saveSession(QString fileName);
+    QString getCurrentFileName();
     void updateSave();
 
     void on_buttonUp_clicked();
@@ -78,7 +82,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
 
-    QString version = "0.1.4";
+    QString version = "0.2.4";
     QString currentFile;
     QVector<Stage> session;
 

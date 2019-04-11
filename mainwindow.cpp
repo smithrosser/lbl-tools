@@ -43,66 +43,56 @@ void MainWindow::on_action_New_triggered() {
     session.clear();
     ui->sessionList->clear();
     currentFile.clear();
+
+    updateConsole("Created new LbL session");
     updateSave();
 }
 
 void MainWindow::on_action_Open_triggered() {
-    int type = -1, dur = -1, pump = -1;			// temporary Stage members
-    QString data, cmd;
 
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open existing session..."), "",
                                                      "LbL session (*.lbl);;All files (*.*)");	// open file dialog
     QFile inputFile(fileName);
     if(fileName.isEmpty() && fileName.isNull())
          return;
-    else if (inputFile.open(QIODevice::ReadOnly))
-    {
-        ui->sessionList->clear();
-        session.clear();
-        currentFile = fileName;
+
+    currentFile = fileName;
+    session.clear();
+    openSession(fileName);
+}
+
+void MainWindow::openSession(QString fileName) {
+    if( fileName.isEmpty() || fileName.isNull() )
+        return;
+
+    QFile inputFile(fileName);
+    if( inputFile.open(QIODevice::ReadOnly) ) {
+
         QTextStream in(&inputFile);
-        while (!in.atEnd())
-        {
-            QString line = in.readLine();		// read file line by line
-            cmd.clear();
+        QString line;
+        Stage parsed;
 
-            // PARSING ALGORITHM: syntax for deposition stage is <type>:<pump>,<duration>; or <type>:<duration>;
-            // Examples: f:1,30; w:30; d:25; (each command on new line!)
+        int i = 0;
+        while( !in.atEnd() ) {
+           i++;
+           parsed.initStage();
+           line = in.readLine();
+           if( parseStageFromFile( line, parsed ) == PARSE_SUCCESS ) {
+               session.push_back( Stage(parsed) );
+           }
+           else {
+               updateConsole("Parse error on line " + QString::number(i) + " of \"" + getCurrentFileName() + "\"");
+               return;
+           }
+        }
+        updateConsole("Opened LbL session \"" + getCurrentFileName() + "\"");
+        updateSave();
 
-            for( int i = 0; i < line.size(); i++ ) {	// goes through characters of line
-                if( line.at(i) == ':' ) {				// colon indicates start of command arguments
-                    if(cmd == "f")
-                        type = FILL;
-                    else if(cmd == "w")
-                        type = WASH;
-                    else if(cmd == "d")
-                        type = DRY;
-                    else
-                        type = -1;
-                    cmd.clear();
-                } else if( line.at(i) == ',' ) {		// arguments are separated by commas
-                    pump = cmd.toInt();
-                    cmd.clear();
-                } else if( line.at(i) == ';' ) {		// semicolon means end of arguments
-                    dur = cmd.toInt();
-                    switch(type) {
-                    case FILL : session.push_back(Stage(FILL, dur, pump)); break;
-                    case WASH : session.push_back(Stage(WASH, dur)); break;
-                    case DRY : session.push_back(Stage(DRY, dur)); break;
-                    default :
-                    QMessageBox::critical(this, tr("Error"), tr("Unable to parse file (check syntax!)")); return;
-                }
-                cmd.clear();
-                } else
-                    cmd.append(line.at(i));		// anything between ;:, chars are stored in 'cmd'
-            }
-       }
-       inputFile.close();
-       listUpdate();
-       ui->sessionList->setCurrentRow(0);
-       updateConsole("Opened: " + fileName);
-       editPaneUpdate();
-       updateSave();
+        listUpdate();
+        ui->sessionList->setCurrentRow(0);
+        editPaneUpdate();
+
+        inputFile.close();
     }
 }
 
@@ -122,23 +112,23 @@ void MainWindow::saveSession(QString fileName) {
     if(fileName.isEmpty() && fileName.isNull())
          return;
     else if(!file.open(QFile::WriteOnly | QFile::Text)){
-        QMessageBox::warning(this, "Warning", "Cannot save file: ", file.errorString());
+        QMessageBox::warning(this, "Warning", "Cannot save session: ", file.errorString());
         return;
     }
     file.resize(0);
     QTextStream out(&file);
     for(int i=0; i<session.size(); i++) {
         switch(session[i].getType()) {
-        case FILL : line = "f:" + QString::number(session[i].getPump()) + "," + QString::number(session[i].getDur()) + ";"; break;
-        case WASH : line = "w:" + QString::number(session[i].getDur()) + ";"; break;
-        case DRY :  line = "d:" + QString::number(session[i].getDur()) + ";"; break;
+        case STAGE_FILL : line = "fill p:" + QString::number(session[i].getPump()) + " t:" + QString::number(session[i].getDur()); break;
+        case STAGE_WASH : line = "wash t:" + QString::number(session[i].getDur()); break;
+        case STAGE_DRY :  line = "dry t:" + QString::number(session[i].getDur()); break;
         default : break;
         }
         out << line << endl;
     }
     file.close();
     currentFile = fileName;
-    updateConsole("Saved: " + fileName);
+    updateConsole("Saved LbL session \"" + getCurrentFileName() + "\"");
     updateSave();
 }
 
@@ -147,13 +137,12 @@ void MainWindow::updateSave() {
     if(!currentFile.isEmpty())
         ui->action_Save->setEnabled(true);
 
-    QString cFName;
+    MainWindow::setWindowTitle(getCurrentFileName() + " - LbL Tools beta " + version);
+}
+
+QString MainWindow::getCurrentFileName() {
     QFileInfo cF(QFile(currentFile).fileName());
-    if(cF.fileName().isEmpty())
-        cFName = "new file";
-    else
-        cFName = cF.fileName();
-    MainWindow::setWindowTitle(cFName + " - LbL Tools beta " + version);
+    return ( cF.fileName().isEmpty() ) ? "new session" : cF.fileName();
 }
 
 void MainWindow::on_action_Settings_triggered() {
@@ -200,7 +189,7 @@ void MainWindow::on_buttonAdd_clicked() {
     dialogAdd aDialog;
     aDialog.setModal(true);
     if( aDialog.exec() == QDialog::Accepted ) {
-        if( aDialog.getType() == FILL ) {
+        if( aDialog.getType() == STAGE_FILL ) {
            session.insert(pos+1, Stage(aDialog.getType(),aDialog.getDur(),aDialog.getPump()));
            listInsert(pos+1, Stage(aDialog.getType(),aDialog.getDur(),aDialog.getPump()));
         } else {
@@ -248,12 +237,12 @@ void MainWindow::setEnableUi(bool state) {
 
 void MainWindow::editPaneUpdate() {
     int pos = ui->sessionList->currentRow();
-    if(session[pos].getType() == FILL) {
+    ui->comboType->setCurrentIndex(session[pos].getType());
+    if(session[pos].getType() == STAGE_FILL) {
         ui->comboPump->setCurrentIndex(session[pos].getPump());
         ui->comboPump->setEnabled(true);
     } else {
         ui->comboPump->setEnabled(false);
-        ui->comboType->setCurrentIndex(session[pos].getType()-1);
         ui->editDur->setText(QString::number(session[pos].getDur()));
     }
 }
@@ -306,9 +295,9 @@ void MainWindow::initEdit() {
 void MainWindow::listInsert(int index, Stage s) {
     QString item;
     switch(s.getType()) {
-        case FILL : item = "Fill\t" + QString::number(s.getDur()) + " sec\tPump " + QString::number(s.getPump()); break;
-        case WASH : item = "Wash\t" + QString::number(s.getDur()) + " sec"; break;
-        case DRY : item = "Dry\t" + QString::number(s.getDur()) + " sec"; break;
+        case STAGE_FILL : item = "Fill\t" + QString::number(s.getDur()) + " sec\tPump " + QString::number(s.getPump()); break;
+        case STAGE_WASH : item = "Wash\t" + QString::number(s.getDur()) + " sec"; break;
+        case STAGE_DRY : item = "Dry\t" + QString::number(s.getDur()) + " sec"; break;
         default : break;
     }
     ui->sessionList->insertItem(index, item);
@@ -331,7 +320,7 @@ void MainWindow::updateSessionInfo() {
         sum += session[i].getDur();
         count++;
 
-        if(session[i].getType() == FILL)
+        if(session[i].getType() == STAGE_FILL)
             volume[session[i].getPump()]++;
     }
 
@@ -355,6 +344,7 @@ void MainWindow::initDevice() {
 
     isDeviceAvailable = false;
     isDeviceReady = false;
+
     foreach(const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts()) {
         if(serialPortInfo.hasVendorIdentifier() && serialPortInfo.hasProductIdentifier()) {
             if( serialPortInfo.vendorIdentifier() == arduinoVendorId ) {
@@ -421,17 +411,24 @@ void MainWindow::deviceRead() {
     }
     if( serialBuffer.size() > 2 && serialBuffer.contains("bsy") ) {
         serialBuffer = "";
+
         ui->labelDevice->setText("session running");
         updateConsole("Session running...");
+
         ui->buttonStart->setEnabled(false);
         ui->buttonDetect->setEnabled(false);
+
         isRunning = true;
     }
     if( serialBuffer.size() > 2 && serialBuffer.contains("dne")) {
         serialBuffer = "";
+
         ui->labelDevice->setText("ready");
+        updateConsole("Session complete");
+
         ui->buttonStart->setEnabled(true);
         ui->buttonDetect->setEnabled(true);
+
         device->close();
         isRunning = false;
     }
@@ -463,9 +460,9 @@ void MainWindow::sendSession() {
     QString cmd;
     for(int i=0; i<session.size(); i++) {
         switch(session[i].getType()) {
-        case FILL : cmd = "f:" + QString::number(session[i].getPump()) + "," + QString::number(session[i].getDur()) + ";"; break;
-        case WASH : cmd = "w:" + QString::number(session[i].getDur()) + ";"; break;
-        case DRY :  cmd = "d:" + QString::number(session[i].getDur()) + ";"; break;
+        case STAGE_FILL : cmd = "f:" + QString::number(session[i].getPump()) + "," + QString::number(session[i].getDur()) + ";"; break;
+        case STAGE_WASH : cmd = "w:" + QString::number(session[i].getDur()) + ";"; break;
+        case STAGE_DRY :  cmd = "d:" + QString::number(session[i].getDur()) + ";"; break;
         default : break;
         }
         QTest::qWait(50);
@@ -477,5 +474,9 @@ void MainWindow::sendSession() {
 // CONSOLE METHODS
 
 void MainWindow::updateConsole( QString str ) {
+    QTextCursor tc(ui->console->textCursor());
+    tc.setPosition(ui->console->document()->characterCount()-1);
+
     ui->console->appendPlainText(str);
+    ui->console->setTextCursor(tc);
 }
