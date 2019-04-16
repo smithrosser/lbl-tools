@@ -29,21 +29,22 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     dialogadd.cpp \
-    dialogsettings.cpp \
     lbl.cpp \
-    parser.cpp
+    parser.cpp \
+    file.cpp \
+    depositor.cpp
 
 HEADERS += \
         mainwindow.h \
     lbl.h \
     dialogadd.h \
-    dialogsettings.h \
-    parser.h
+    parser.h \
+    file.h \
+    depositor.h
 
 FORMS += \
         mainwindow.ui \
-    dialogadd.ui \
-    dialogsettings.ui
+    dialogadd.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

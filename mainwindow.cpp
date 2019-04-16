@@ -7,128 +7,61 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     setWindowTitle("LbL Tools beta" + version);
-    initEdit();
-    device = new QSerialPort;
 
-    loadSettings();
-    if(settingAutoScan)
-        initDevice();
+    device.init();
+
+    initEdit();
     updateSave();
+    updateButtons();
 }
 
 MainWindow::~MainWindow() {
-    if (device->isOpen())
-        device->close();
-    delete device;
     delete ui;
 }
 
-// SETTINGS METHODS
-void MainWindow::loadSettings() {
-    QSettings setting("UoN","lbl-tools");
-    setting.beginGroup("MainWindow");
-    settingAutoScan = setting.value("AutoScan", true).toBool();
-    setting.endGroup();
-}
+// FILE HANDLERS
 
-void MainWindow::saveSettings() {
-    QSettings setting("UoN","lbl-tools");
-    setting.beginGroup("MainWindow");
-    setting.setValue("AutoScan", settingAutoScan);
-    setting.endGroup();
-}
-
-// MENU BAR METHODS
-void MainWindow::on_action_New_triggered() {
-    session.clear();
-    ui->sessionList->clear();
-    currentFile.clear();
-
-    updateConsole("Created new LbL session");
-    updateSave();
-}
-
-void MainWindow::on_action_Open_triggered() {
+void MainWindow::openSession() {
 
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open existing session..."), "",
                                                      "LbL session (*.lbl);;All files (*.*)");	// open file dialog
-    if(fileName.isEmpty() && fileName.isNull())
-         return;
 
-    currentFile = fileName;
-    session.clear();
-    openSession(fileName);
-}
+    if( !fileName.isEmpty() && !fileName.isNull() ) {
+        session.clear();
+        currentFile = fileName;
+    }
+    int open = openSessionFile(fileName, session);
+    if( open == OPEN_SUCCESS ) {
 
-void MainWindow::openSession(QString fileName) {
-    if( fileName.isEmpty() || fileName.isNull() )
-        return;
-
-    QFile inputFile(fileName);
-    if( inputFile.open(QIODevice::ReadOnly) ) {
-
-        QTextStream in(&inputFile);
-        QString line;
-        Stage parsed;
-
-        int i = 0;
-        while( !in.atEnd() ) {
-           i++;
-           parsed.initStage();
-           line = in.readLine();
-           if( parseStageFromFile( line, parsed ) == PARSE_SUCCESS ) {
-               session.push_back( Stage(parsed) );
-           }
-           else {
-               updateConsole("Parse error on line " + QString::number(i) + " of \"" + getCurrentFileName() + "\"");
-               return;
-           }
-        }
         updateConsole("Opened LbL session \"" + getCurrentFileName() + "\"");
         updateSave();
 
         listUpdate();
         ui->sessionList->setCurrentRow(0);
         editPaneUpdate();
-
-        inputFile.close();
     }
+    else
+        updateConsole( (open < 0) ? "Couldn't open file"
+                                  : "Syntax error at line " + QString::number(open) + " of \"" + getCurrentFileName() + "\"" );
+
+    updateButtons();
 }
 
-void MainWindow::on_actionSave_As_triggered() {
-    QString fileName = QFileDialog::getSaveFileName(this, "Save session as...", ".lbl", "LbL session (*.lbl);; All files (*.*)");
-    saveSession(fileName);
-}
+void MainWindow::saveSession( QString fileName ) {
 
-void MainWindow::on_action_Save_triggered() {
-    if(!currentFile.isEmpty())
-        saveSession(currentFile);
-}
+    if( fileName != nullptr )
+        fileName = currentFile;
+    else
+        fileName = QFileDialog::getSaveFileName(this, "Save session as...", ".lbl", "LbL session (*.lbl);; All files (*.*)");
 
-void MainWindow::saveSession(QString fileName) {
-    QString line;
-    QFile file(fileName);
-    if(fileName.isEmpty() && fileName.isNull())
-         return;
-    else if(!file.open(QFile::WriteOnly | QFile::Text)){
-        QMessageBox::warning(this, "Warning", "Cannot save session: ", file.errorString());
-        return;
+    int save = saveSessionFile(fileName, session);
+    if( save == SAVE_SUCCESS ) {
+        currentFile = fileName;
+        updateConsole("Saved LbL session \"" + getCurrentFileName() + "\"");
+        updateSave();
     }
-    file.resize(0);
-    QTextStream out(&file);
-    for(int i=0; i<session.size(); i++) {
-        switch(session[i].getType()) {
-        case STAGE_FILL : line = "fill p:" + QString::number(session[i].getPump()) + " t:" + QString::number(session[i].getDur()); break;
-        case STAGE_WASH : line = "wash t:" + QString::number(session[i].getDur()); break;
-        case STAGE_DRY :  line = "dry t:" + QString::number(session[i].getDur()); break;
-        default : break;
-        }
-        out << line << endl;
-    }
-    file.close();
-    currentFile = fileName;
-    updateConsole("Saved LbL session \"" + getCurrentFileName() + "\"");
-    updateSave();
+    else
+        updateConsole("Couldn't save file");
 }
 
 void MainWindow::updateSave() {
@@ -144,14 +77,29 @@ QString MainWindow::getCurrentFileName() {
     return ( cF.fileName().isEmpty() ) ? "new session" : cF.fileName();
 }
 
-void MainWindow::on_action_Settings_triggered() {
-    dialogSettings sDialog;
-    sDialog.setModal(true);
-    sDialog.setAutoScan(settingAutoScan);
-    if( sDialog.exec() == QDialog::Accepted ) {
-        settingAutoScan = sDialog.getAutoScan();
-        saveSettings();
-    }
+// MENU BAR METHODS
+
+void MainWindow::on_action_New_triggered() {
+    session.clear();
+    ui->sessionList->clear();
+    currentFile.clear();
+
+    updateConsole("Created new LbL session");
+    updateSave();
+}
+
+void MainWindow::on_action_Open_triggered() {
+
+    openSession();
+}
+
+void MainWindow::on_actionSave_As_triggered() {
+    saveSession( nullptr );
+}
+
+void MainWindow::on_action_Save_triggered() {
+    if(!currentFile.isEmpty())
+        saveSession( currentFile );
 }
 
 void MainWindow::on_actionExit_triggered() {
@@ -159,6 +107,7 @@ void MainWindow::on_actionExit_triggered() {
 }
 
 // BUTTON METHODS
+
 void MainWindow::on_buttonUp_clicked() {
     if( session.isEmpty() )
         return;
@@ -223,15 +172,35 @@ void MainWindow::on_buttonCopy_clicked() {
     }
 }
 
+void MainWindow::on_buttonDetect_clicked() {
+    ui->buttonDetect->setEnabled(false);
+    setupDevice();
+}
+
+void MainWindow::on_buttonStart_clicked() {
+
+    isStart = true;
+    setEnableUi(false);
+    updateConsole("Waiting for device on " + device.get()->portName() + "...");
+    sendSession();
+}
+
 void MainWindow::on_sessionList_itemClicked() {
     editPaneUpdate();
 }
 
 // EDIT PANE METHODS
-void MainWindow::setEnableUi(bool state) {
-    ui->verticalLayoutWidget->setEnabled(state);
-    ui->groupBox->setEnabled(state);
-    ui->groupBox_2->setEnabled(state);
+
+void MainWindow::initEdit() {
+    ui->comboType->addItem("Fill");
+    ui->comboType->addItem("Wash");
+    ui->comboType->addItem("Dry");
+
+    ui->comboPump->addItem("Pump 0");
+    ui->comboPump->addItem("Pump 1");
+    ui->comboPump->addItem("Pump 2");
+
+    ui->editDur->setValidator( new QIntValidator(1, 1000, this) );
 }
 
 void MainWindow::editPaneUpdate() {
@@ -279,35 +248,22 @@ void MainWindow::on_editDur_textEdited(const QString &arg1) {
 
 }
 
-void MainWindow::initEdit() {
-    ui->comboType->addItem("Fill");
-    ui->comboType->addItem("Wash");
-    ui->comboType->addItem("Dry");
+// CONSOLE METHODS
 
-    ui->comboPump->addItem("Pump 0");
-    ui->comboPump->addItem("Pump 1");
-    ui->comboPump->addItem("Pump 2");
+void MainWindow::updateConsole( QString str ) {
+    QTextCursor tc(ui->console->textCursor());
+    tc.setPosition(ui->console->document()->characterCount()-1);
 
-    ui->editDur->setValidator( new QIntValidator(1, 1000, this) );
+    ui->console->appendPlainText(str);
+    ui->console->setTextCursor(tc);
 }
 
-// LIST WIDGET METHODS
-void MainWindow::listInsert(int index, Stage s) {
-    QString item;
-    switch(s.getType()) {
-        case STAGE_FILL : item = "Fill\t" + QString::number(s.getDur()) + " sec\tPump " + QString::number(s.getPump()); break;
-        case STAGE_WASH : item = "Wash\t" + QString::number(s.getDur()) + " sec"; break;
-        case STAGE_DRY : item = "Dry\t" + QString::number(s.getDur()) + " sec"; break;
-        default : break;
-    }
-    ui->sessionList->insertItem(index, item);
-    updateSessionInfo();
-}
+// GENERAL UI METHODS
 
-void MainWindow::listUpdate() {
-    ui->sessionList->clear();
-    for(int i=0; i<session.size(); i++)
-        listInsert(i, session[i]);
+void MainWindow::setEnableUi(bool state) {
+    ui->verticalLayoutWidget->setEnabled(state);
+    ui->groupBox->setEnabled(state);
+    ui->groupBox_3->setEnabled(state);
 }
 
 void MainWindow::updateSessionInfo() {
@@ -331,153 +287,104 @@ void MainWindow::updateSessionInfo() {
     ui->labelUsage1->setText(QString::number(volume[1])+" ml");
     ui->labelUsage2->setText(QString::number(volume[2])+" ml");
 
-   }
+}
+
+void MainWindow::updateDeviceInfo() {
+        ui->labelPort->setText(device.get()->portName());
+        ui->labelDevice->setText(device.getStatus());
+}
+
+void MainWindow::updateButtons() {
+    ui->buttonStart->setEnabled( isDeviceReady && session.size() > 0 );
+}
+
+// LIST WIDGET METHODS
+
+void MainWindow::listInsert(int index, Stage s) {
+    QString item;
+    switch(s.getType()) {
+        case STAGE_FILL : item = "Fill\t" + QString::number(s.getDur()) + " sec\tPump " + QString::number(s.getPump()); break;
+        case STAGE_WASH : item = "Wash\t" + QString::number(s.getDur()) + " sec"; break;
+        case STAGE_DRY : item = "Dry\t" + QString::number(s.getDur()) + " sec"; break;
+        default : break;
+    }
+    ui->sessionList->insertItem(index, item);
+    updateSessionInfo();
+}
+
+void MainWindow::listUpdate() {
+    ui->sessionList->clear();
+    for(int i=0; i<session.size(); i++)
+        listInsert(i, session[i]);
+}
 
 void MainWindow::on_sessionList_activated() {
     editPaneUpdate();
 }
 
 // DEVICE METHODS
-void MainWindow::initDevice() {
-    static const quint16 arduinoVendorId = 9025;
-    static const quint16 arduinoProductId = 67;
 
-    isDeviceAvailable = false;
-    isDeviceReady = false;
+void MainWindow::setupDevice() {
+    ui->labelPort->setText("detecting");
 
-    foreach(const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts()) {
-        if(serialPortInfo.hasVendorIdentifier() && serialPortInfo.hasProductIdentifier()) {
-            if( serialPortInfo.vendorIdentifier() == arduinoVendorId ) {
-                if( serialPortInfo.productIdentifier() == arduinoProductId ) {
-                    devicePortName = serialPortInfo.portName();
-                    isDeviceAvailable = true;
-                    updateConsole("Found a compatible device on " + devicePortName + "...");
-                    ui->labelPort->setText(devicePortName);
-                }
-            }
-        }
+    if( device.init() == INIT_SUCCESS ) {
+        updateDeviceInfo();
+        updateConsole("Found compatible device on " + device.get()->portName() + "...");
 
+        QObject::connect(device.get(), SIGNAL(readyRead()), this, SLOT(deviceRead()));
+        device.openPort();
+        device.handshake();
     }
-    if(isDeviceAvailable) {
-        device->setPortName(devicePortName);
-        device->setBaudRate(QSerialPort::Baud9600);
-        device->setDataBits(QSerialPort::Data8);
-        device->setParity(QSerialPort::NoParity);
-        device->setStopBits(QSerialPort::OneStop);
-        device->setFlowControl(QSerialPort::NoFlowControl);
-        QObject::connect(device, SIGNAL(readyRead()), this, SLOT(deviceRead()));
-
-        isHandshake = true;
-        ui->labelDevice->setText("awaiting response");
-        device->open(QSerialPort::ReadWrite);
-        QTest::qWait(500);
-        device->write("hnd");
-        QTest::qWait(500);
-        device->write("hnd");
-    } else {
-        updateConsole("No compatible device found");
+    else {
+        updateConsole("Unable to find compatible device");
         ui->labelPort->setText("unknown");
         ui->labelDevice->setText("not ready");
-        ui->buttonStart->setEnabled(false);
     }
-
 }
 
 void MainWindow::deviceRead() {
-    serialBuffer += device->readAll();
-    if( isHandshake && serialBuffer.size() > 2 ) {
-        if( serialBuffer.contains("shk") ) {
+
+    // reads device API responses, and performs actions based on them
+
+    if( device.get()->isOpen() )
+        serialBuffer += device.get()->readAll();
+
+    if( serialBuffer.size() > 2 ) {
+
+        if( serialBuffer.contains("idl") ) {
             isDeviceReady = true;
-            ui->labelDevice->setText("ready");
-            updateConsole("Device on " + devicePortName + " ready");
+
+            device.setStatus("ready");
+            updateConsole("Device on " + device.get()->portName() + " ready");
+            ui->buttonDetect->setEnabled(true);
+
+            device.closePort();
+            serialBuffer = "";
         }
-        else {
-            ui->labelDevice->setText("handshake failed");
-            updateConsole("Device handshake failed");
+        else if( serialBuffer.contains("err")
+                 || serialBuffer.contains("rdy") ) {
+            serialBuffer = "";
         }
-        device->close();
-        serialBuffer = "";
-        isHandshake = false;
-        ui->buttonStart->setEnabled(true);
+        else if( serialBuffer.contains("bsy") ) {
+            updateConsole("Session running...");
+            setEnableUi(false);
+            serialBuffer = "";
+        }
+        else if( serialBuffer.contains("dne") ) {
+            updateConsole("Session complete");
+            setEnableUi(true);
+            serialBuffer = "";
+        }
+        updateDeviceInfo();
     }
-    else if( isStart && serialBuffer.size() > 2 && serialBuffer.contains("rcv") ) {
-        serialBuffer = "";
-        sendSession();
-    }
-    else if( isStart && serialBuffer.size() > 2 && serialBuffer.contains("rdy") ) {
-        serialBuffer = "";
-        setEnableUi(true);
-        updateConsole("Session transfer done");
-        isStart = false;
-    }
-    if( serialBuffer.size() > 2 && serialBuffer.contains("bsy") ) {
-        serialBuffer = "";
-
-        ui->labelDevice->setText("session running");
-        updateConsole("Session running...");
-
-        ui->buttonStart->setEnabled(false);
-        ui->buttonDetect->setEnabled(false);
-
-        isRunning = true;
-    }
-    if( serialBuffer.size() > 2 && serialBuffer.contains("dne")) {
-        serialBuffer = "";
-
-        ui->labelDevice->setText("ready");
-        updateConsole("Session complete");
-
-        ui->buttonStart->setEnabled(true);
-        ui->buttonDetect->setEnabled(true);
-
-        device->close();
-        isRunning = false;
-    }
-}
-
-void MainWindow::on_buttonDetect_clicked() {
-   initDevice();
-}
-
-void MainWindow::on_buttonStart_clicked() {
-    if(session.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Session is empty");
-        return;
-    }
-    isStart = true;
-    setEnableUi(false);
-    updateConsole("Waiting for device on " + devicePortName + "...");
-    device->open(QSerialPort::ReadWrite);
-    QTest::qWait(500);
-    device->write("snd");
-    QTest::qWait(500);
-    device->write("snd");
+    updateButtons();
 }
 
 void MainWindow::sendSession() {
-    ui->labelDevice->setText("receiving data");
+
+    device.openPort();
+    device.initSession();
     updateConsole("Transferring session data...");
-
-    QString cmd;
-    for(int i=0; i<session.size(); i++) {
-        switch(session[i].getType()) {
-        case STAGE_FILL : cmd = "f:" + QString::number(session[i].getPump()) + "," + QString::number(session[i].getDur()) + ";"; break;
-        case STAGE_WASH : cmd = "w:" + QString::number(session[i].getDur()) + ";"; break;
-        case STAGE_DRY :  cmd = "d:" + QString::number(session[i].getDur()) + ";"; break;
-        default : break;
-        }
-        QTest::qWait(50);
-        device->write(cmd.toUtf8());
-    }
-    device->write("end;");
-}
-
-// CONSOLE METHODS
-
-void MainWindow::updateConsole( QString str ) {
-    QTextCursor tc(ui->console->textCursor());
-    tc.setPosition(ui->console->document()->characterCount()-1);
-
-    ui->console->appendPlainText(str);
-    ui->console->setTextCursor(tc);
+    device.sendSession( session );
+    device.execSession();
 }

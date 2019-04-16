@@ -2,24 +2,17 @@
 #define MAINWINDOW_H
 
 #include "lbl.h"
+#include "file.h"
+#include "depositor.h"
 #include "parser.h"
-
 #include "dialogadd.h"
-#include "dialogsettings.h"
 
 #include <QMainWindow>
 #include <QFileDialog>
-#include <QFile>
 #include <QMessageBox>
 #include <QListWidgetItem>
-#include <QTextStream>
 #include <QTextCursor>
-#include <QTimer>
 #include <QVector>
-#include <QSerialPort>
-#include <QSerialPortInfo>
-#include <QSettings>
-#include <QDebug>
 #include <QTest>
 
 namespace Ui {
@@ -35,68 +28,69 @@ public:
     ~MainWindow();
 
 private slots:
-    void loadSettings();
-    void saveSettings();
 
+    // FILE HANDLERS
+    void openSession();
+    void saveSession( QString fileName );
+    QString getCurrentFileName();
+    void updateSave();
+
+    // MENU BAR METHODS
     void on_action_New_triggered();
     void on_action_Open_triggered();
     void on_action_Save_triggered();
     void on_actionSave_As_triggered();
-    void on_action_Settings_triggered();
     void on_actionExit_triggered();
 
-    void openSession(QString fileName);
-    void saveSession(QString fileName);
-    QString getCurrentFileName();
-    void updateSave();
-
+    // BUTTON METHODS
     void on_buttonUp_clicked();
     void on_buttonDown_clicked();
     void on_buttonAdd_clicked();
     void on_buttonRemove_clicked();
     void on_buttonCopy_clicked();
+    void on_buttonDetect_clicked();
+    void on_buttonStart_clicked();
 
-    void listInsert(int index, Stage s);
-    void listUpdate();
-    void initEdit();
-    void editPaneUpdate();
-    void updateSessionInfo();
-
+    // LIST WIDGET METHODS
     void on_sessionList_itemClicked();
     void on_sessionList_activated();
+    void listInsert(int index, Stage s);
+    void listUpdate();
 
+    // EDIT PANE METHODS
+    void initEdit();
+    void editPaneUpdate();
     void on_comboType_activated(int index);
     void on_comboPump_activated(int index);
     void on_editDur_textEdited(const QString &arg1);
 
-    void setEnableUi(bool state);
-
-    void initDevice();
-    void deviceRead();
-    void sendSession();
-
-    void on_buttonDetect_clicked();
-    void on_buttonStart_clicked();
-
+    // CONSOLE METHODS
     void updateConsole( QString str );
 
+    // GENERAL UI METHODS
+    void updateSessionInfo();
+    void updateDeviceInfo();
+    void updateButtons();
+    void setEnableUi(bool state);
+
+    // DEVICE METHODS
+    void setupDevice();
+    void deviceRead();
+    void sendSession();
 
 private:
     Ui::MainWindow *ui;
 
-    QString version = "0.2.4";
+    QString version = "0.3.3";
     QString currentFile;
     QVector<Stage> session;
 
-    QSerialPort *device;
+    depositor device;
     QByteArray serialBuffer = "";
-    QString devicePortName;
 
     bool isDeviceAvailable = false, isHandshake = false, isDeviceReady = false, isStart = false;
     bool isSelect = false;
     bool isRunning = false;
-
-    bool settingAutoScan;
 
     int stageCount = 0;
 };
