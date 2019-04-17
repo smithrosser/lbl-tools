@@ -11,6 +11,7 @@ int openSessionFile( QString fileName, QVector<Stage>& session ) {
         QTextStream in(&inputFile);
         QString line;
         Stage parsed;
+        session.clear();
 
         int i = 0;
         while( !in.atEnd() ) {
@@ -20,7 +21,10 @@ int openSessionFile( QString fileName, QVector<Stage>& session ) {
            if( parseStageFromFile( line, parsed ) == PARSE_SUCCESS ) {
                session.push_back( Stage(parsed) );
            }
-           else return i; // return line number of PARSE_ERROR
+           else {
+               session.clear();
+               return i; // return line number of PARSE_ERROR
+           }
         }
     }
     inputFile.close();
@@ -28,9 +32,6 @@ int openSessionFile( QString fileName, QVector<Stage>& session ) {
 }
 
 int saveSessionFile( QString fileName, QVector<Stage> session ) {
-
-    if(fileName.isEmpty() && fileName.isNull())
-         return SAVE_FILE_ERROR;
 
     QString line;
     QFile outputFile(fileName);

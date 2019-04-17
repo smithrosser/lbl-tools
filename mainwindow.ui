@@ -52,16 +52,16 @@
      </rect>
     </property>
     <property name="text">
-     <string>Stage             Duration       Pump</string>
+     <string>Stage                  Duration              Pump</string>
     </property>
    </widget>
    <widget class="QGroupBox" name="groupBox">
     <property name="geometry">
      <rect>
       <x>360</x>
-      <y>0</y>
+      <y>10</y>
       <width>331</width>
-      <height>161</height>
+      <height>151</height>
      </rect>
     </property>
     <property name="title">
@@ -165,7 +165,7 @@
       <x>360</x>
       <y>170</y>
       <width>331</width>
-      <height>231</height>
+      <height>241</height>
      </rect>
     </property>
     <property name="title">
@@ -547,9 +547,9 @@
     <property name="geometry">
      <rect>
       <x>360</x>
-      <y>410</y>
+      <y>420</y>
       <width>331</width>
-      <height>121</height>
+      <height>111</height>
      </rect>
     </property>
     <property name="title">
@@ -559,7 +559,7 @@
      <property name="geometry">
       <rect>
        <x>20</x>
-       <y>60</y>
+       <y>50</y>
        <width>141</width>
        <height>51</height>
       </rect>
@@ -578,7 +578,7 @@
      <property name="geometry">
       <rect>
        <x>170</x>
-       <y>60</y>
+       <y>50</y>
        <width>141</width>
        <height>51</height>
       </rect>
@@ -632,9 +632,46 @@
       <height>151</height>
      </rect>
     </property>
+    <property name="palette">
+     <palette>
+      <active>
+       <colorrole role="Base">
+        <brush brushstyle="SolidPattern">
+         <color alpha="255">
+          <red>238</red>
+          <green>238</green>
+          <blue>238</blue>
+         </color>
+        </brush>
+       </colorrole>
+      </active>
+      <inactive>
+       <colorrole role="Base">
+        <brush brushstyle="SolidPattern">
+         <color alpha="255">
+          <red>238</red>
+          <green>238</green>
+          <blue>238</blue>
+         </color>
+        </brush>
+       </colorrole>
+      </inactive>
+      <disabled>
+       <colorrole role="Base">
+        <brush brushstyle="SolidPattern">
+         <color alpha="255">
+          <red>240</red>
+          <green>240</green>
+          <blue>240</blue>
+         </color>
+        </brush>
+       </colorrole>
+      </disabled>
+     </palette>
+    </property>
     <property name="font">
      <font>
-      <family>Monospace</family>
+      <family>Consolas</family>
       <pointsize>9</pointsize>
      </font>
     </property>

@@ -26,24 +26,28 @@ void MainWindow::openSession() {
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open existing session..."), "",
                                                      "LbL session (*.lbl);;All files (*.*)");	// open file dialog
 
-    if( !fileName.isEmpty() && !fileName.isNull() ) {
-        session.clear();
-        currentFile = fileName;
-    }
+    if( fileName.isEmpty() || fileName.isNull() )
+        return;
+
+    currentFile = fileName;
     int open = openSessionFile(fileName, session);
     if( open == OPEN_SUCCESS ) {
 
         updateConsole("Opened LbL session \"" + getCurrentFileName() + "\"");
-        updateSave();
 
         listUpdate();
         ui->sessionList->setCurrentRow(0);
         editPaneUpdate();
+
     }
-    else
+    else {
         updateConsole( (open < 0) ? "Couldn't open file"
                                   : "Syntax error at line " + QString::number(open) + " of \"" + getCurrentFileName() + "\"" );
+        currentFile = "";
+    }
 
+    listUpdate();
+    updateSave();
     updateButtons();
 }
 
