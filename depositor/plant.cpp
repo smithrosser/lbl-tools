@@ -19,7 +19,7 @@ void initPins() {
 int executeStage( Stage s ) {
   
   if      ( s.type == STAGE_FILL ) immerse( s.pump, s.dur );
-  else if ( s.type == STAGE_WASH ) wash( s.dur );
+  else if ( s.type == STAGE_WASH ) washContinuous( s.dur );
   else if ( s.type == STAGE_DRY  ) dry( s.dur );
   else return STAGE_ERROR;
 
@@ -28,18 +28,46 @@ int executeStage( Stage s ) {
 
 void immerse( int pump, int dur ) {
   digitalWrite( pump+4, LOW );
+  delay(900);
+  digitalWrite( pump+4, HIGH);
   delay( dur*1000 );
-  digitalWrite( pump+4, HIGH ); 
+  drain();
 }
 
 void wash( int dur ) {
-  digitalWrite( PUMP_W, LOW );
-  delay( dur*1000 );
-  digitalWrite( PUMP_W, HIGH );
+  int count = 0;
+  while(count < dur) {
+    digitalWrite(PUMP_1, LOW);
+    delay(700);
+    digitalWrite(PUMP_1, HIGH);
+    count++;
+    drain();
+    count += 4;
+  }
+}
+
+void washContinuous( int dur ) {
+  int count = 0;
+  digitalWrite(PUMP_1, LOW);
+  delay(500);
+  count++;
+  while(count < dur) {
+    digitalWrite(PUMP_D, LOW);
+    delay(1000);
+    count++;
+  }
+  digitalWrite(PUMP_1, HIGH);
+  drain();
 }
 
 void dry( int dur ) {
 	digitalWrite( VALVE, LOW );
   delay( dur*1000 );
   digitalWrite( VALVE, HIGH );
+}
+
+void drain() {
+  digitalWrite(PUMP_D, LOW);
+  delay(2000);
+  digitalWrite(PUMP_D, HIGH);
 }

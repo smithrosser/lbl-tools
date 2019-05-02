@@ -6,9 +6,9 @@
 
 #define PUMP_0 4
 #define PUMP_1 5
-#define PUMP_2 6
+#define PUMP_2 10
 #define PUMP_W 7
-#define PUMP_D 8
+#define PUMP_D 6
 #define VALVE 9
 
 #define STAGE_SUCCESS 0
@@ -19,6 +19,8 @@ void initPins();
 int executeStage( Stage s );
 void immerse( int pump, int dur );
 void wash( int dur );
+void washContinuous( int dur );
 void dry( int dur );
+void drain();
 
 #endif
