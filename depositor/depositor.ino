@@ -29,6 +29,12 @@ void loop() {
     else if( !isEmpty(cmd) && cmd.equals("sts") ) {
       currentState = READ;
     }
+    else if( !isEmpty(cmd) && cmd.equals("fsh") ) {
+      flush_();
+    }
+    else if( !isEmpty(cmd) && cmd.equals("drn") ) {
+      drain();
+    }
     break;
 
     case READ:
