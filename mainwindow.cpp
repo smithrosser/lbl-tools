@@ -177,7 +177,6 @@ void MainWindow::on_buttonCopy_clicked() {
 }
 
 void MainWindow::on_buttonDetect_clicked() {
-    ui->buttonDetect->setEnabled(false);
     setupDevice();
 }
 
@@ -291,6 +290,7 @@ void MainWindow::updateSessionInfo() {
     ui->labelUsage1->setText(QString::number(volume[1])+" ml");
     ui->labelUsage2->setText(QString::number(volume[2])+" ml");
 
+    updateButtons();
 }
 
 void MainWindow::updateDeviceInfo() {
@@ -300,6 +300,8 @@ void MainWindow::updateDeviceInfo() {
 
 void MainWindow::updateButtons() {
     ui->buttonStart->setEnabled( isDeviceReady && session.size() > 0 );
+    ui->buttonFlush->setEnabled( isDeviceReady );
+    ui->buttonDrain->setEnabled( isDeviceReady );
 }
 
 // LIST WIDGET METHODS
@@ -370,14 +372,15 @@ void MainWindow::deviceRead() {
             serialBuffer = "";
         }
         else if( serialBuffer.contains("bsy") ) {
-            updateConsole("Session running...");
+            updateConsole("Depositor running...");
             setEnableUi(false);
             serialBuffer = "";
         }
         else if( serialBuffer.contains("dne") ) {
-            updateConsole("Session complete");
+            updateConsole("Complete");
             setEnableUi(true);
             serialBuffer = "";
+            device.closePort();
         }
         updateDeviceInfo();
     }
@@ -391,4 +394,16 @@ void MainWindow::sendSession() {
     updateConsole("Transferring session data...");
     device.sendSession( session );
     device.execSession();
+}
+
+void MainWindow::on_buttonFlush_clicked()
+{
+   device.openPort();
+   device.write("fsh");
+}
+
+void MainWindow::on_buttonDrain_clicked()
+{
+   device.openPort();
+   device.write("drn");
 }

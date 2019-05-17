@@ -30,10 +30,14 @@ void loop() {
       currentState = READ;
     }
     else if( !isEmpty(cmd) && cmd.equals("fsh") ) {
+      Serial.print("bsy");
       flush_();
+      Serial.print("dne");
     }
     else if( !isEmpty(cmd) && cmd.equals("drn") ) {
+      Serial.print("bsy");
       drain();
+      Serial.print("dne");
     }
     break;
 

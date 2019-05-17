@@ -78,6 +78,10 @@ private slots:
     void deviceRead();
     void sendSession();
 
+    void on_buttonFlush_clicked();
+
+    void on_buttonDrain_clicked();
+
 private:
     Ui::MainWindow *ui;
 
