@@ -13,5 +13,10 @@ fill p:0 t:30
 wash t:25
 dry t:60
 ```
+
+An Arduino was used as the depositor device: source code can be found under the `depositor` directory. [This video](https://www.youtube.com/watch?v=TsJPs6xb3u8) shows the device prototype in action.
+
 ### Screenshot
 ![Program screenshot](screenshot/0_2_4.png)
+
+
